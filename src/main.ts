@@ -1,26 +1,11 @@
 import * as core from "@actions/core";
+import * as exec from "@actions/exec";
 import { Cargo } from "@actions-rs/core";
 
 import * as input from "./input";
-import * as download from "./download";
 
 interface Options {
-    useToolCache: boolean;
     useCache: boolean;
-}
-
-async function downloadFromToolCache(
-    crate: string,
-    version: string
-): Promise<void> {
-    try {
-        await download.downloadFromCache(crate, version);
-    } catch (error) {
-        core.warning(
-            `Unable to download ${crate} == ${version} from the tool cache: ${error}`
-        );
-        throw error;
-    }
 }
 
 export async function run(
@@ -28,32 +13,49 @@ export async function run(
     version: string,
     options: Options
 ): Promise<void> {
-    try {
-        if (options.useToolCache) {
-            try {
-                core.info(
-                    "Tool cache is explicitly enabled via the Action input"
-                );
-                core.startGroup("Downloading from the tool cache");
+    core.info(`Installing ${crate} with cargo`);
+    const cargo = await Cargo.get();
+    const key = options.useCache ? await getRustKey() : '';
+    await cargo.installCached(crate, version, key);
+}
 
-                return await downloadFromToolCache(crate, version);
-            } finally {
-                core.endGroup();
-            }
-        } else {
-            core.info(
-                "Tool cache is disabled in the Action inputs, skipping it"
-            );
+async function getRustKey(): Promise<string> {
+  const rustc = await getRustVersion();
+  return `${rustc.release}-${rustc.host}-${rustc["commit-hash"].slice(0, 12)}`;
+}
 
-            throw new Error(
-                "Faster installation options either failed or disabled"
-            );
-        }
-    } catch (error) {
-        core.info("Falling back to the `cargo install` command");
-        const cargo = await Cargo.get();
-        await cargo.installCached(crate, version);
-    }
+interface RustVersion {
+  host: string;
+  release: string;
+  "commit-hash": string;
+}
+
+async function getRustVersion(): Promise<RustVersion> {
+  const stdout = await getCmdOutput("rustc", ["-vV"]);
+  let splits = stdout
+    .split(/[\n\r]+/)
+    .filter(Boolean)
+    .map((s) => s.split(":").map((s) => s.trim()))
+    .filter((s) => s.length === 2);
+  return Object.fromEntries(splits);
+}
+
+export async function getCmdOutput(
+  cmd: string,
+  args: Array<string> = [],
+  options: exec.ExecOptions = {},
+): Promise<string> {
+  let stdout = "";
+  await exec.exec(cmd, args, {
+    silent: true,
+    listeners: {
+      stdout(data) {
+        stdout += data.toString();
+      },
+    },
+    ...options,
+  });
+  return stdout;
 }
 
 async function main(): Promise<void> {
@@ -61,7 +63,6 @@ async function main(): Promise<void> {
         const actionInput = input.get();
 
         await run(actionInput.crate, actionInput.version, {
-            useToolCache: actionInput.useToolCache,
             useCache: actionInput.useCache,
         });
     } catch (error) {
