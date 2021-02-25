@@ -16,6 +16,9 @@ inputs:
     description: Store installed binary in the GitHub Actions cache
     required: false
     default: 'true'
+  bins:
+    description: The specific binaries in the crate to be installed
+    required: false
 
 runs:
   using: 'node12'
