@@ -41,7 +41,7 @@ async function installCached(
         const paths = (bins || [crate]).map((bin) =>
             path.join(path.dirname(installDir), bin)
         );
-        const keyPrefix = `${crate}-${version}-${(bins || []).map((bin) => `${bin}-`)}`;
+        const keyPrefix = `${crate}-${version}-${(bins || []).map((bin) => `${bin}-`).join('-')}`;
         const programKey = keyPrefix + primaryKey;
         const programRestoreKeys = restoreKeys.map(
             (key) => keyPrefix + key
