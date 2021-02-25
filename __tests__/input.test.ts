@@ -17,4 +17,18 @@ describe("actions-rs/install/input", () => {
         expect(result.crate).toBe("cross");
         expect(result.version).toBe("latest");
     });
+
+    it("Parses bin commas correctly", () => {
+        process.env['INPUT_BINS'] = 'foo,bar';
+        const result = input.get();
+
+        expect(result.bins).toStrictEqual(['foo', 'bar']);
+    });
+
+    it("Parses bin newlines correctly", () => {
+        process.env['INPUT_BINS'] = 'foo\nbar';
+        const result = input.get();
+
+        expect(result.bins).toStrictEqual(['foo', 'bar']);
+    });
 });

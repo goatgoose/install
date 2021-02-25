@@ -9,16 +9,25 @@ export interface Input {
     crate: string;
     version: string;
     useCache: boolean;
+    bins?: string[];
 }
 
 export function get(): Input {
     const crate = input.getInput("crate", { required: true });
     const version = input.getInput("version", { required: true });
     const useCache = input.getInputBool("use-cache") != false;
+    const bins = splitBins(input.getInput("bins"));
 
     return {
-        crate: crate,
-        version: version,
-        useCache: useCache,
+        crate,
+        version,
+        useCache,
+        bins,
     };
+}
+
+function splitBins(bins: string | undefined): string[] | undefined {
+    if (!bins) return undefined;
+
+    return bins.split(/[\n, ]+/g);
 }
